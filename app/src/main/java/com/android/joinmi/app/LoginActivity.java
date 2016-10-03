@@ -18,6 +18,7 @@ import butterknife.ButterKnife;
 public class LoginActivity extends AppCompatActivity {
     private static final String TAG = "LoginActivity";
     private static final int REQUEST_SIGNUP = 0;
+    private static final int REQUEST_SIGNIN = 1;
 
     @BindView(R.id.input_email) EditText _emailText;
     @BindView(R.id.input_password) EditText _passwordText;
@@ -35,6 +36,10 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 login();
+
+                //DEBUG PURPOSES:
+                Intent intent = new Intent(getApplicationContext(), MainMapActivity.class);
+                startActivityForResult(intent, 1);
             }
         });
 
