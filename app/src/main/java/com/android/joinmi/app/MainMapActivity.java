@@ -1,5 +1,6 @@
 package com.android.joinmi.app;
 
+import android.content.Context;
 import android.location.Location;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
@@ -7,6 +8,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.Toast;
+import com.android.joinmi.app.util.AppUtils;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
@@ -14,15 +16,19 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+
+import java.util.List;
 
 public class MainMapActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         GoogleMap.OnMarkerDragListener,
         GoogleMap.OnMapLongClickListener,
+        GoogleMap.OnMapClickListener,
         View.OnClickListener {
 
     // Our Map
@@ -39,6 +45,12 @@ public class MainMapActivity extends FragmentActivity implements OnMapReadyCallb
 
     //Google Api Client
     private GoogleApiClient googleApiClient;
+
+    //Last location
+    private Location mLastLocation;
+
+    //flag for saving location
+    private Boolean saveEnabled = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,37 +108,69 @@ public class MainMapActivity extends FragmentActivity implements OnMapReadyCallb
 
     @Override
     public void onClick(View v) {
-        if(v == currentButton){
+        if(v == currentButton) {
             getCurrentLocation();
             moveMap();
+        } else if (v == saveButton) {
+            String toastText;
+            int duration = Toast.LENGTH_SHORT;
+
+            if (saveEnabled) {
+                saveEnabled = false;
+                toastText = "Saving points disabled!";
+            } else {
+                saveEnabled = true;
+                toastText = "Saving points enabled!";
+            }
+            AppUtils.showShortToastMessage(toastText, getApplicationContext());
+        } else if (v == viewButton) {
+            //Clearing all the markers
+            AppUtils.showShortToastMessage("Clearing saved points!", getApplicationContext());
+            mMap.clear();
         }
 
     }
 
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
+        AppUtils.showShortToastMessage("No Google Maps Connection!", getApplicationContext());
 
     }
 
     @Override
     public void onMapLongClick(LatLng latLng) {
-        //Clearing all the markers
-        mMap.clear();
+        if (saveEnabled) {
+            //Adding a new marker to the current pressed position we are also making the draggable true
+            mMap.addMarker(new MarkerOptions()
+                    .position(latLng)
+                    .draggable(true));
+            AppUtils.showShortToastMessage("Added point!", getApplicationContext());
 
-        //Adding a new marker to the current pressed position we are also making the draggable true
-        mMap.addMarker(new MarkerOptions()
-                .position(latLng)
-                .draggable(true));
+        }
+    }
+
+    @Override
+    public void onMapClick(LatLng latLng) {
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         //Initializing our map
         mMap = googleMap;
-        //Creating a random coordinate
-        LatLng latLng = new LatLng(-34, 151);
+        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
+                googleApiClient);
+        LatLng latLng;
+        //if we can get the current location use it
+        if (mLastLocation != null) {
+            latLng = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
+        } else {
+            // set location to waterloo
+            latLng = new LatLng(43.473283, -80.531380);
+        }
+
         //Adding marker to that coordinate
-        mMap.addMarker(new MarkerOptions().position(latLng).draggable(true));
+        mMap.addMarker(new MarkerOptions().position(latLng).draggable(true))
+                .setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
         //Setting onMarkerDragListener to track the marker drag
         mMap.setOnMarkerDragListener(this);
@@ -187,7 +231,7 @@ public class MainMapActivity extends FragmentActivity implements OnMapReadyCallb
         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
 
         //Animating the camera
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(15.0f));
 
         //Displaying current coordinates in toast
         Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
